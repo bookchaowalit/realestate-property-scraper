@@ -21,7 +21,7 @@ from bs4 import BeautifulSoup
 from property.atomic_io import render_csv, write_text_atomic
 
 try:
-    from scripts import scrape_property_listings as source
+    from scripts import scrape_property_listings as source  # type: ignore[import-not-found]  # monorepo layout
 except ImportError:  # domain repository checkout
     import scrape_property_listings as source
 
@@ -221,7 +221,7 @@ class DDPropertyScraper:
         self,
         type: str = "condo",
         max_pages: int = 5,
-        max_price: float | None = 30000,
+        max_price: float | str | None = 30000,
         output_dir: str | Path | None = None,
         **_: Any,
     ) -> None:

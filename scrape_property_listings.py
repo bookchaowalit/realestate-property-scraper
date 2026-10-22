@@ -30,7 +30,7 @@ from property.atomic_io import render_csv, write_text_atomic
 try:
     from dotenv import load_dotenv
 except ImportError:
-    load_dotenv = None
+    load_dotenv = None  # type: ignore[assignment]  # optional dependency
 
 # Resolve the repository root without reading its environment file. Live
 # collection loads dotenv only after the caller has explicitly skipped dry-run.
@@ -41,12 +41,12 @@ _root = Path(__file__).resolve().parent
 try:
     import httpx
 except ImportError:
-    httpx = None
+    httpx = None  # type: ignore[assignment]  # optional for --dry-run
 
 try:
     from bs4 import BeautifulSoup
 except ImportError:
-    BeautifulSoup = None
+    BeautifulSoup = None  # type: ignore[assignment,misc]  # optional for --dry-run
 
 ROOT = _root
 OUTPUT_DIR = ROOT / "data" / "exported"
@@ -162,7 +162,7 @@ def _brave_search(query: str, limit: int = 20) -> list:
             return _bing_search(query, limit)
         soup = BeautifulSoup(resp.text, "html.parser")
         results = []
-        for el in soup.find_all(attrs={"data-pos": True}):
+        for el in soup.find_all(attrs={"data-pos": True}):  # type: ignore[call-overload]  # bs4 stub: dict invariance
             a_tag = el.find("a", class_="result-header") or el.find("a")
             if not a_tag:
                 continue
@@ -237,7 +237,7 @@ def _bing_search(query: str, limit: int = 20) -> list:
             a_link = a_tag.find("a", href=True)
             if not a_link:
                 continue
-            href = _decode_bing_redirect(a_link["href"])
+            href = _decode_bing_redirect(str(a_link["href"]))
             title = a_link.get_text(strip=True)
             desc_el = li.find("p")
             desc = desc_el.get_text(strip=True)[:200] if desc_el else ""
@@ -343,7 +343,7 @@ def google_search(query: str, limit: int = 20) -> list:
             return []
         soup = BeautifulSoup(resp.text, "html.parser")
         for a_tag in soup.find_all("a", href=True):
-            href = a_tag["href"]
+            href = str(a_tag["href"])
             m = re.search(r"/url\?q=(https?://[^&]+)", href)
             if m:
                 url = m.group(1)
@@ -429,7 +429,7 @@ def extract_listings(markdown: str, listing_type: str) -> list:
 
     # Split by listing patterns (DDproperty uses various separators)
     lines = markdown.split("\n")
-    current_listing = {}
+    current_listing: dict = {}
 
     for line in lines:
         line = line.strip()
@@ -676,7 +676,7 @@ def detect_price_drops(current: list, history_file: Path, threshold_pct: float) 
     return drops
 
 
-def print_summary(listings: list, drops: list = None):
+def print_summary(listings: list, drops: list | None = None):
     """Print listing summary."""
     if not listings:
         print("  No listings found")
@@ -734,7 +734,7 @@ def _search_fallback_listings(listing_type: str) -> list:
         if not clean_title:
             continue
         price_raw = ""
-        price = 0
+        price: float = 0
         price_match = PRICE_HINT.search(f"{raw_title} {sr.get('description', '')}")
         if price_match:
             price_raw = price_match.group(1)

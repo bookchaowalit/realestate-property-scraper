@@ -44,7 +44,7 @@ class CollectTests(unittest.TestCase):
                 "description": "฿9,000",
             }
         ]
-        sleeps = []
+        sleeps: list[float] = []
         with (
             patch.object(source, "free_scrape_url", side_effect=fake_fetch),
             patch.object(source, "google_search", return_value=search) as google,
