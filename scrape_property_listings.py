@@ -765,9 +765,14 @@ def collect_type(listing_type: str, url: str) -> list:
     return _search_fallback_listings(listing_type)
 
 
-def collect(types_to_scrape: dict, sleep=time.sleep) -> list:
+def collect(types_to_scrape: dict, sleep=time.sleep, failures=None) -> list:
     """Collect every listing type with a pause between types; one failing
-    type is reported and skipped."""
+    type is reported and skipped.
+
+    When ``failures`` is a list, each failed type is appended to it as
+    ``{"job": <type>, "error": <ExceptionClass>}`` so the caller can exit
+    non-zero and report it (the exception message is never kept).
+    """
     all_listings = []
     for index, (listing_type, url) in enumerate(types_to_scrape.items()):
         if index:
@@ -777,6 +782,8 @@ def collect(types_to_scrape: dict, sleep=time.sleep) -> list:
             listings = collect_type(listing_type, url)
         except Exception as e:
             print(f"    ERROR: {type(e).__name__}: {e}")
+            if failures is not None:
+                failures.append({"job": listing_type, "error": type(e).__name__})
             continue
         print(f"    Extracted {len(listings)} listings")
         all_listings.extend(listings)
@@ -867,7 +874,11 @@ def main(argv=None):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Property Listing Scraper")
     print(f"  Types: {len(types_to_scrape)} | Pages per type: 1")
 
-    all_listings = collect(types_to_scrape)
+    from property.observability import init_sentry, report_failures
+
+    sentry = init_sentry("scrape_property_listings")
+    failures: list[dict[str, str]] = []
+    all_listings = collect(types_to_scrape, failures=failures)
     print(
         f"\n  Total: {len(all_listings)} listings across {len(types_to_scrape)} categories"
     )
@@ -876,9 +887,12 @@ def main(argv=None):
         persist(all_listings, output_dir, args.alert_drop_pct)
     else:
         print("  No listings parsed (site structure may have changed)")
+        failures.append({"job": "property_listings", "error": "NoListingsParsed"})
+    report_failures(sentry, failures)
 
     print("\n  Done.")
-    return 0
+    # A failed type or an empty run is a failed run (exit 1), as in the sibling runners.
+    return 1 if failures else 0
 
 
 class PropertyListingScraper:

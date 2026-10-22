@@ -5,3 +5,7 @@ python-dotenv>=1.0.0
 # anyio GHSA-5p39-cfhj-2xmp / GHSA-82r6-8w77-94w6, idna GHSA-65pc-fj4g-8rjx.
 anyio>=4.14.2
 idna>=3.15
+certifi>=2026.10.19  # PYSEC-2026-4320 / GHSA-6q48-6c7w-9gw2 (via httpx)
+# Error reporting for runs (property/observability.py); off without SENTRY_DSN.
+# Keep this file in sync with pyproject.toml.
+sentry-sdk>=2.72,<3
