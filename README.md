@@ -1,6 +1,6 @@
 # book-property-scraping
 
-**Tier:** C / tool prototype (portfolio breadth, not interview flagship)  
+**Tier:** B (catalog label; Big Loop target L3)  
 **Owner path:** `bookchaowalit/book-apps/tools/book-property-scraping`
 
 > **Source terms (2026-10-15):** unlicensed DDproperty automation is not approved; live runs below are not approved. See [Source terms decision](#source-terms-decision-2026-10-15).
@@ -11,7 +11,8 @@ Property listing scrape prototypes (e.g. DDProperty-style modules).
 
 ## Entry points
 
-- `scrape_property_listings.py, property/ddproperty_scraper.py`
+- `scrape_property_listings.py` (runner; exits 1 when a listing type fails or nothing is parsed)
+- `property/ddproperty_scraper.py` (Bangkok condo-rent adapter, no CLI of its own)
 
 ## Stack
 
@@ -55,17 +56,32 @@ written atomically (`property/atomic_io.py`: temp file + fsync +
 ## Checks (offline)
 
 ```bash
-pip install -r requirements.txt pytest ruff
-ruff check .
-python -m pytest -q
+uv sync --frozen --all-extras          # runtime deps + dev extra (pytest, ruff, mypy) from uv.lock
+uv run ruff check . && uv run ruff format --check .
+uv run mypy                            # scope and strictness: [tool.mypy] in pyproject.toml
+uv run python -m pytest -q --cov       # CI gate: total coverage >= 87%
+uv run python scrape_property_listings.py --dry-run   # plan only, no network
 ```
 
-Tests replay `tests/fixtures/` and mocked search results only; CI
-(`.github/workflows/ci.yml`) runs the same commands.
+Tests replay `tests/fixtures/` and mock the HTTP layer (search pages included); a
+conftest guard fails any real socket connection. CI (`.github/workflows/ci.yml`, shared
+platform-ci-workflows v1.1.1) runs the same checks on Python 3.10 and 3.13.
+`requirements.txt` is kept for the pip install path above; keep it in sync with
+`pyproject.toml`.
+
+## Error reporting (opt-in)
+
+With `SENTRY_DSN` set (optionally `SENTRY_ENVIRONMENT`), a non-dry run sends one Sentry
+`error` event per failed listing type, or one when nothing was parsed, carrying the type
+and exception class only (`property/observability.py`). Init sets
+`send_default_pii=False`, `include_local_variables=False`,
+`max_request_body_size="never"`, tracing off, and `before_send=scrub_event`, which drops
+locals, exception text, request data and breadcrumbs from every event, including
+uncaught crashes. Without a DSN nothing is initialised; `--dry-run` never initialises it.
 
 ## Boundaries
 
-- **Not** a lake-first data product. Durable market datasets live under `book-*-data` repos.
+- Target producer for `property.v1` (draft, pending); it does **not** land data in the lake, and its exports miss four required contract fields (see `specs/001-l2-baseline/spec.md`).
 - **Not** coupled to Solo Empire monorepo runtime. Nested Git repo; commit only inside this tree.
 - Never commit `.env`, cookies, session dumps, or scraped PII dumps to Git.
 
