@@ -84,7 +84,9 @@ def _fallback_price(text: str) -> float | None:
 def _normalise_listing(listing: dict[str, Any], listing_type: str) -> dict[str, Any]:
     normalised = dict(listing)
     normalised["listing_type"] = listing_type
-    normalised["url"] = _canonical_url(str(normalised.get("url") or SOURCE_URL))
+    # A card without its own URL keeps an empty url (deduped by title). The search
+    # page URL is not a listing identity: using it collapsed every URL-less card.
+    normalised["url"] = _canonical_url(str(normalised.get("url") or ""))
     return normalised
 
 
