@@ -29,6 +29,22 @@ class DDPropertyScraperTests(unittest.TestCase):
         self.assertIn("phrom-phong", listings[0]["url"])
         self.assertEqual(listings[0]["listing_type"], "condo_rent_bkk")
 
+    def test_listings_without_urls_are_not_collapsed_into_one(self):
+        # Markdown cards often carry no listing URL. They used to get the search
+        # page URL as their "url", so every URL-less card shared one dedupe key
+        # (and one contract identity) and all but the first were dropped.
+        markdown = (
+            "# Condo for rent near BTS Ari\n\n฿18,000/month\n\n1 bedroom\n\n"
+            "# Condo for rent near BTS Ekkamai\n\n฿22,000/month\n\n2 bedrooms\n"
+        )
+        listings = DDPropertyScraper.parse_markdown(markdown)
+
+        self.assertEqual(
+            [item["title"] for item in listings],
+            ["Condo for rent near BTS Ari", "Condo for rent near BTS Ekkamai"],
+        )
+        self.assertEqual([item["url"] for item in listings], ["", ""])
+
     def test_run_writes_dedicated_snapshot(self):
         markdown = FIXTURE.read_text(encoding="utf-8")
         with tempfile.TemporaryDirectory() as temp_dir:
