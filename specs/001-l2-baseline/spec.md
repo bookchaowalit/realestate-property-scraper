@@ -66,9 +66,9 @@ error reporting, no KPI plan and no spec. Two real bugs were found while adding 
 
 | AC | Red (sha · command · failure) | Green |
 |---|---|---|
-| AC-05 | `3092096` · `python -m pytest -q tests/test_ddproperty_scraper.py` · `AssertionError: Lists differ: ['Condo for rent near BTS Ari'] != ['Condo for rent near BTS Ari', 'Condo for rent near BTS Ekkamai']` | GREEN_CI |
-| AC-01..AC-04 | `bfd6224` · `python -m pytest -q tests/test_observability.py` · `assert 0 == 1` (exit code 0 for a failed / empty run) and `ModuleNotFoundError: No module named 'property.observability'` | GREEN_CI |
-| AC-06 | none: written green as a guard that pins the known contract gap | GREEN_CI |
+| AC-05 | `3092096` · `python -m pytest -q tests/test_ddproperty_scraper.py` · `AssertionError: Lists differ: ['Condo for rent near BTS Ari'] != ['Condo for rent near BTS Ari', 'Condo for rent near BTS Ekkamai']` | [CI 39755698429](https://github.com/bookchaowalit/realestate-property-scraper/actions/runs/39755698429) (success, 3.10 + 3.13, coverage gate 87) |
+| AC-01..AC-04 | `bfd6224` · `python -m pytest -q tests/test_observability.py` · `assert 0 == 1` (exit code 0 for a failed / empty run) and `ModuleNotFoundError: No module named 'property.observability'` | [CI 39755698429](https://github.com/bookchaowalit/realestate-property-scraper/actions/runs/39755698429) (success, 3.10 + 3.13, coverage gate 87) |
+| AC-06 | none: written green as a guard that pins the known contract gap | [CI 39755698429](https://github.com/bookchaowalit/realestate-property-scraper/actions/runs/39755698429) (success, 3.10 + 3.13, coverage gate 87) |
 
 ## Contract findings (property.v1, not fixed here)
 
