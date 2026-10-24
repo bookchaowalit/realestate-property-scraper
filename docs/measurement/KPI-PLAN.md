@@ -2,7 +2,7 @@
 title: KPI and Instrumentation Plan — realestate-property-scraper
 created: 2026-10-22
 updated: 2026-10-22
-status: draft
+status: approved
 template: architecture-docs templates/sdlc/kpi-and-instrumentation-plan.md
 ---
 
@@ -24,7 +24,7 @@ property source is approved.
 | Status | draft |
 | Metric owner | bookchaowalit (owner) |
 | AI maker | Claude session b-data (2026-10-22) |
-| AI reviewer | pending [ต้องยืนยัน] |
+| AI reviewer | independent Claude reviewer subagent (`solo:solo-reviewer`, Sonnet, read-only, no maker context), 2026-10-24: approved (see Approval) |
 | Charter objectives | Roadmap `data-scrapers.yaml` prp-g1..prp-g4 (no charter) |
 | Analytics / data source of truth | Run output (stdout summary, exit code, `data/exported/*.csv`), Sentry events from `property/observability.py`; Bronze `property_listings` once wired |
 | Dashboard | none yet [ต้องยืนยัน] |
@@ -100,3 +100,12 @@ PDPA purpose and retention are `pending_operator_legal_approval` in the contract
 | G5 | KPI definitions accepted | pending | owner | — | this file |
 | G10 | Instrumentation checks pass | blocked: no approved source, no DSN | owner | — | — |
 | G11 | Dashboard live | blocked | owner | — | — |
+
+## Approval (2026-10-24)
+
+| Field | Value |
+|---|---|
+| Checker | independent Claude reviewer subagent (`solo:solo-reviewer`, Sonnet, read-only, no maker context) |
+| Approver | AI approval under the owner's process (approvals by the owner or AI with evidence; maker and checker are different agents). Recorded by Claude session oa-remainder on the owner's instruction "ทำที่เหลือให้หน่อย" (2026-10-24) |
+| Verdict | **approved** |
+| Evidence | tests/test_contract.py KNOWN_MISSING_REQUIRED + no contact fields; scrape output line; scraped_at local vs UTC as stated; property/observability.py off without DSN; PRODUCT.md BOO-129. |
