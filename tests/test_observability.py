@@ -17,6 +17,14 @@ import pytest
 import scrape_property_listings as source
 
 SECRET_PAGE_TEXT = "agent phone 081-234-5678"
+SECRET_URL = "https://www.ddproperty.com/search?q=phone&access_token=tok-abc123"
+
+
+class FakeLoggingIntegration:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+
 LISTING = {
     "title": "Condo near BTS Ari",
     "type": "condo_sale_bkk",
@@ -49,7 +57,10 @@ class FakeSentry(types.ModuleType):
 @pytest.fixture
 def sentry(monkeypatch):
     fake = FakeSentry()
+    logging_module = types.ModuleType("sentry_sdk.integrations.logging")
+    logging_module.LoggingIntegration = FakeLoggingIntegration  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "sentry_sdk", fake)
+    monkeypatch.setitem(sys.modules, "sentry_sdk.integrations.logging", logging_module)
     monkeypatch.delenv("SENTRY_DSN", raising=False)
     monkeypatch.delenv("SENTRY_ENVIRONMENT", raising=False)
     monkeypatch.setattr(source, "_load_runtime_env", lambda: None)
@@ -152,3 +163,77 @@ def test_init_never_sends_locals_bodies_or_messages(sentry, monkeypatch):
     assert SECRET_PAGE_TEXT not in repr(scrubbed)
     assert "secret" not in repr(scrubbed)
     assert scrubbed["exception"]["values"][0]["type"] == "ValueError"
+
+
+def _before_send(sentry, monkeypatch):
+    from property.observability import init_sentry
+
+    monkeypatch.setenv("SENTRY_DSN", "https://public@example.invalid/1")
+    assert init_sentry("test") is not None
+    return sentry.init_kwargs["before_send"]
+
+
+def test_init_turns_off_log_events_and_log_breadcrumbs(sentry, monkeypatch):
+    # A logger.error/exception (ours or httpx/urllib3) must not become an event carrying
+    # free log text: the logging integration is installed with every level off.
+    _before_send(sentry, monkeypatch)
+    integrations = sentry.init_kwargs["integrations"]
+    logging = [i for i in integrations if isinstance(i, FakeLoggingIntegration)]
+    assert len(logging) == 1
+    assert logging[0].kwargs == {
+        "level": None,
+        "event_level": None,
+        "sentry_logs_level": None,
+    }
+
+
+def test_sentry_stays_off_without_the_logging_integration(sentry, monkeypatch):
+    # Fail closed: if log capture cannot be turned off, do not initialise at all.
+    from property.observability import init_sentry
+
+    monkeypatch.delitem(sys.modules, "sentry_sdk.integrations.logging")
+    monkeypatch.setenv("SENTRY_DSN", "https://public@example.invalid/1")
+    assert init_sentry("test") is None
+    assert sentry.init_kwargs is None
+
+
+def test_scrub_drops_logentry(sentry, monkeypatch):
+    before_send = _before_send(sentry, monkeypatch)
+    event = {
+        "level": "error",
+        "logger": "httpx",
+        "logentry": {
+            "message": "HTTP Request: GET %s",
+            "params": [SECRET_URL],
+            "formatted": f"HTTP Request: GET {SECRET_URL}",
+        },
+    }
+    scrubbed = before_send(event, {})
+
+    assert "logentry" not in scrubbed
+    assert "tok-abc123" not in repr(scrubbed)
+    assert scrubbed["level"] == "error"
+
+
+def test_scrub_keeps_only_the_reporters_own_message(sentry, monkeypatch):
+    from property.observability import report_failures
+
+    before_send = _before_send(sentry, monkeypatch)
+    assert (
+        report_failures(sentry, [{"job": "condo_sale_bkk", "error": "RuntimeError"}])
+        == 1
+    )
+    own = sentry.messages[0][0]
+    assert before_send({"message": own}, {})["message"] == own
+
+    foreign = (
+        f"HTTP Request: GET {SECRET_URL}",
+        f"job condo_sale_bkk failed: {SECRET_PAGE_TEXT}",
+        f"job condo_sale_bkk failed: RuntimeError\n{SECRET_PAGE_TEXT}",
+        "",
+        {"formatted": SECRET_PAGE_TEXT},
+    )
+    for message in foreign:
+        scrubbed = before_send({"message": message, "level": "error"}, {})
+        assert "message" not in scrubbed, message
+        assert scrubbed["level"] == "error"
