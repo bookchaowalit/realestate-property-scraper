@@ -2,7 +2,7 @@
 name = "realestate-property-scraper"
 version = "0.1.0"
 description = "DDproperty listing parsers and runner (book-property-scraping); offline fixtures only while property.v1 is pending."
-requires-python = ">=3.10"
+requires-python = ">=3.11.5"
 # Keep in sync with requirements.txt (the README install path uses it).
 dependencies = [
     "httpx>=0.27.0",
